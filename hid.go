@@ -17,10 +17,17 @@ type Info struct {
 	SubClass uint8
 	Protocol uint8
 
-	Interface uint8
-	Bus       int
-	Device    int
+	Interface  uint8
+	Bus        int
+	Device     int
+
+	Serial string
+	ManufacturerName string
+	ProductName string
+
 }
+
+
 
 //
 // A common HID device interace

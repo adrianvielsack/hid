@@ -253,16 +253,20 @@ func walker(path string, cb func(Device)) error {
 								bus, _ = strconv.Atoi(matches[1])
 								dev, _ = strconv.Atoi(matches[2])
 							}
+							sysfsInfo := readDeviceProperties(bus, dev)
 							device = &usbDevice{
 								info: Info{
-									Vendor:    devDesc.Vendor,
-									Product:   devDesc.Product,
-									Revision:  devDesc.Revision,
-									SubClass:  i.InterfaceSubClass,
-									Protocol:  i.InterfaceProtocol,
-									Interface: i.Number,
-									Bus:       bus,
-									Device:    dev,
+									Vendor:           devDesc.Vendor,
+									Product:          devDesc.Product,
+									Revision:         devDesc.Revision,
+									SubClass:         i.InterfaceSubClass,
+									Protocol:         i.InterfaceProtocol,
+									Interface:        i.Number,
+									Bus:              bus,
+									Device:           dev,
+									Serial:           sysfsInfo.Serial,
+									ManufacturerName: sysfsInfo.Manufacturer,
+									ProductName:      sysfsInfo.Product,
 								},
 								path: path,
 							}
