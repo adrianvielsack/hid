@@ -10,14 +10,13 @@ import (
 )
 
 type SysfsInformation struct {
-	Serial string
+	Serial       string
 	Manufacturer string
-	Product string
+	Product      string
 }
 
-var reSysBus = regexp.MustCompile(`^/sys/bus/usb/devices/usb(\d+)$`)
-var reSysBusDevice = regexp.MustCompile(`^/sys/bus/usb/devices/usb(\d+)/(\d+)-(\d+)$`)
-
+var reSysBus = regexp.MustCompile(`^/sys/bus/usb/devices/usb\d+$`)
+var reSysBusDevice = regexp.MustCompile(`^/sys/bus/usb/devices/usb\d+/[/[\d\.:-]+]*$`)
 
 func readFileNoErr(file string) string {
 	b, _ := ioutil.ReadFile(file)
@@ -33,36 +32,46 @@ func readFileIntNoErr(file string) int {
 	return num
 }
 
+func recursiveSearchMatchRegex(path string, pathRegex *regexp.Regexp, f func(path string)) {
+	dirs, err := ioutil.ReadDir(path)
+	if err != nil {
+		return
+	}
+	for _, dirName := range dirs {
+		subPath := filepath.Join(path, dirName.Name())
+		if pathRegex.MatchString(filepath.Join(subPath)) {
+			recursiveSearchMatchRegex(subPath, pathRegex, f)
+			f(subPath)
+		}
+	}
+}
+
 func readDeviceProperties(bus int, dev int) SysfsInformation {
 	ret := SysfsInformation{}
 	found := false
 	filepath.Walk("/sys/bus/usb/devices/", func(busPath string, info os.FileInfo, err error) error {
 
-		if ! reSysBus.MatchString(busPath) || found {
+		if !reSysBus.MatchString(busPath) || found {
 			return nil
 		}
-		filepath.Walk(busPath + "/", func(path string, info os.FileInfo, err error) error {
-
-			if ! reSysBusDevice.MatchString(path) || found {
-				return nil
+		recursiveSearchMatchRegex(busPath, reSysBusDevice, func(path string) {
+			if !reSysBusDevice.MatchString(path) || found {
+				return
 			}
 			devId := readFileIntNoErr(filepath.Join(path, "devnum"))
 			busId := readFileIntNoErr(filepath.Join(path, "busnum"))
 			if devId != dev || busId != bus {
-				return nil
+				return
 			}
 
 			found = true
 			ret.Serial = readFileNoErr(filepath.Join(path, "serial"))
 			ret.Manufacturer = readFileNoErr(filepath.Join(path, "manufacturer"))
 			ret.Product = readFileNoErr(filepath.Join(path, "product"))
-
-			return nil
 		})
+
 		return nil
 	})
 
 	return ret
 }
-
-
